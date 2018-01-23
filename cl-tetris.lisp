@@ -257,9 +257,7 @@
                    for i from 0
                    when (not (= i row-to-delete))
                    collect elem)))))
-  (if (>= row (y-pos bs))
-      t
-      nil))
+  (>= row (y-pos bs)))
 
 (defun eliminate-rows (bss row)
   (loop for bs in bss
