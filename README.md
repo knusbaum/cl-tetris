@@ -3,7 +3,11 @@
 
 Tetris written in Common lisp
 
-To run:
+## Requirements
+
+The only dependencies are cl-sdl2 (this in turn requires libsdl2 to be installed)
+
+### To Run
 ```
 (asdf:load-system 'cl-tetris)
 (cl-tetris:tetris)
