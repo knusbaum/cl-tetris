@@ -1,5 +1,4 @@
 # CL-TETRIS
----
 
 Tetris written in Common lisp
 
