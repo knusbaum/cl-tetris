@@ -295,18 +295,17 @@
           (:idle ()
                  (begin-frame fc)
 
-                 (sdl2:set-render-draw-color *renderer*
-                                             background-color
-                                             background-color
-                                             background-color
-                                             255)
+                 (sdl2:set-render-draw-color *renderer* 0 0 0 255)
                  (sdl2:render-clear *renderer*)
 
                  (loop for i from 0 below height
                     for red from 0 by 0.1
                     do (progn
                          (sdl2:set-render-draw-color *renderer*
-                                                     (truncate red) 0 0 255)
+                                                     (truncate red)
+                                                     background-color
+                                                     background-color
+                                                     255)
                          (sdl2:render-draw-line *renderer* 0 i width i)))
 
                  (when (> background-color 0)
