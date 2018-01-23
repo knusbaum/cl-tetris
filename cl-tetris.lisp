@@ -11,9 +11,7 @@
 
 (defvar *screen-width* nil)
 (defvar *screen-height* nil)
-
 (defvar *block-size-px* 40)
-
 
 ;;; This initializes everything that needs to be initialized
 ;;; for the game to work
@@ -63,10 +61,8 @@
 
 (defun draw-grid ()
   (sdl2:set-render-draw-color *renderer* 0 0 0 25)
-
   (loop for i from 0 below *screen-width* by *block-size-px*
      do (sdl2:render-draw-line *renderer* i 0 i *screen-height*))
-
   (loop for i from 0 below *screen-height* by *block-size-px*
      do (sdl2:render-draw-line *renderer* 0 i *screen-width* i)))
 
@@ -77,7 +73,7 @@
 
 (defun complete-row (ta i)
   (loop for j from 0 below (car (array-dimensions ta))
-     when (not (aref ta j i))
+     unless (aref ta j i)
      do (return-from complete-row nil))
   t)
 
@@ -96,79 +92,56 @@
 (defclass block-seq ()
   ((x-pos :initarg :x-pos :accessor x-pos)
    (y-pos :initarg :y-pos :accessor y-pos)
-
    (rows :initarg :rows :accessor rows)
    (color :initarg :color :accessor color)))
 
+(defun make-block (&key x-pos y-pos rows red green blue)
+  (make-instance 'block-seq
+                 :x-pos x-pos
+                 :y-pos y-pos
+                 :rows rows
+                 :color (make-instance 'color
+                                       :red red
+                                       :green green
+                                       :blue blue)))
 (defun random-block ()
   (let ((blocknum (random 7))
         (x-pos 5)
         (y-pos 0))
-
     (case blocknum
-      (0 (make-instance 'block-seq
-                        :x-pos x-pos
-                        :y-pos y-pos
-                        :rows '((t t t t))
-                        :color (make-instance 'color
-                                              :red 0
-                                              :green 255
-                                              :blue 255)))
-      (1 (make-instance 'block-seq
-                        :x-pos x-pos
-                        :y-pos y-pos
-                        :rows '((t t t)
-                                (nil nil t))
-                        :color (make-instance 'color
-                                              :red 0
-                                              :green 0
-                                              :blue 255)))
-      (2 (make-instance 'block-seq
-                        :x-pos x-pos
-                        :y-pos y-pos
-                        :rows '((t t t)
-                                (t nil nil))
-                        :color (make-instance 'color
-                                              :red 255
-                                              :green 165
-                                              :blue 0)))
-      (3 (make-instance 'block-seq
-                        :x-pos x-pos
-                        :y-pos y-pos
-                        :rows '((t t)
-                                (t t))
-                        :color (make-instance 'color
-                                              :red 255
-                                              :green 255
-                                              :blue 0)))
-      (4 (make-instance 'block-seq
-                        :x-pos x-pos
-                        :y-pos y-pos
-                        :rows '((nil t t)
-                                (t t nil))
-                        :color (make-instance 'color
-                                              :red 0
-                                              :green 255
-                                              :blue 0)))
-      (5 (make-instance 'block-seq
-                        :x-pos x-pos
-                        :y-pos y-pos
-                        :rows '((t t t)
-                                (nil t nil))
-                        :color (make-instance 'color
-                                              :red 255
-                                              :green 0
-                                              :blue 255)))
-      (6 (make-instance 'block-seq
-                        :x-pos x-pos
-                        :y-pos y-pos
-                        :rows '((t t nil)
-                                (nil t t))
-                        :color (make-instance 'color
-                                              :red 255
-                                              :green 0
-                                              :blue 0))))))
+      (0 (make-block :x-pos x-pos :y-pos y-pos
+                     :rows '((t t t t))
+                     :red 0 :green 255 :blue 255))
 
+      (1 (make-block :x-pos x-pos :y-pos y-pos
+                     :rows '((t t t)
+                             (nil nil t))
+                     :red 0 :green 0 :blue 255))
+
+      (2 (make-block :x-pos x-pos :y-pos y-pos
+                     :rows '((t t t)
+                             (t nil nil))
+                     :red 255 :green 165 :blue 0))
+
+      (3 (make-block :x-pos x-pos :y-pos y-pos
+                     :rows '((t t)
+                             (t t))
+                     :red 255 :green 255 :blue 0))
+
+      (4 (make-block :x-pos x-pos :y-pos y-pos
+                     :rows '((nil t t)
+                             (t t nil))
+                     :red 0 :green 255 :blue 0))
+
+      (5 (make-block :x-pos x-pos :y-pos y-pos
+                     :rows '((t t t)
+                             (nil t nil))
+                     :red 255 :green 0 :blue 255))
+
+      (6 (make-block :x-pos x-pos :y-pos y-pos
+                     :rows '((t t nil)
+                             (nil t t))
+                     :red 255 :green 0 :blue 0)))))
 
 (defun draw-block-seq (bs)
   (sdl2:set-render-draw-color *renderer*
@@ -192,27 +165,26 @@
   (incf (y-pos bs)))
 
 (defun move-left (bs ta)
-  (incf (x-pos bs) -1)
+  (decf (x-pos bs))
   (when (block-collides bs ta)
     (incf (x-pos bs))))
 
 (defun move-right (bs ta)
   (incf (x-pos bs))
   (when (block-collides bs ta)
-    (incf (x-pos bs) -1)))
+    (decf (x-pos bs))))
 
 (defun rotate-block (bs ta)
   (let ((orig-width (length (rows bs)))
         (new-width (length (car (rows bs))))
         (old-rows (rows bs)))
-
     (setf (rows bs)
           (loop
              for i from 0 below (length (car (rows bs)))
              collect (loop for j from (1- (length (rows bs))) downto 0
                         collect (elt (elt (rows bs) j) i))))
 
-    (when (not (= orig-width new-width))
+    (unless (= orig-width new-width)
       (incf (x-pos bs) (truncate (- new-width orig-width) 2)))
 
     (incf (y-pos bs) (- orig-width new-width))
@@ -231,31 +203,29 @@
        (< (x-pos bs) 0))
 
       (return-from block-collides t)
-      (progn
-        (loop
-           for row in (rows bs)
-           for row-i from 0
-           for y-position = (+ row-i (y-pos bs))
-           when (>= y-position 0)
-           do (loop
-                 for col in row
-                 for col-i from 0
-                 when col
-                 do (when (aref tetris-array (+ col-i (x-pos bs)) y-position)
-                      (return-from block-collides t))))
-        nil)))
+      (loop
+         for row in (rows bs)
+         for row-i from 0
+         for y-position = (+ row-i (y-pos bs))
+         when (>= y-position 0)
+         do (loop
+               for col in row
+               for col-i from 0
+               when col
+               do (when (aref tetris-array (+ col-i (x-pos bs)) y-position)
+                    (return-from block-collides t))))))
 
 (defun eliminate-row (bs row)
   (when (and
          (>= row (y-pos bs))
          (< row (+ (y-pos bs) (length (rows bs)))))
     (let ((row-to-delete (- row (y-pos bs))))
-      (if (= row-to-delete 0)
-          (setf (rows bs) (cdr (rows bs)))
+      (if (zerop row-to-delete)
+          (pop (rows bs))
           (setf (rows bs)
                 (loop for elem in (rows bs)
                    for i from 0
-                   when (not (= i row-to-delete))
+                   unless (= i row-to-delete)
                    collect elem)))))
   (>= row (y-pos bs)))
 
@@ -274,8 +244,7 @@
            when col
            do (setf (aref tetris-array (+ (x-pos bs) col-i) (+ (y-pos bs) row-i)) t))))
 
-
-
+;;; The main tetris function
 (defun tetris ()
   (let ((width 400)
         (height 800))
@@ -288,7 +257,7 @@
             (drop-frames 100)
             (background-color 0)
             (blocks-to-move-down nil)
-            (speedup-frames 6000))
+            (speedup-frames 3000))
         (sdl2:with-event-loop (:method :poll :background nil)
           (:idle ()
                  (begin-frame fc)
@@ -298,32 +267,29 @@
 
                  (loop for i from 0 below height
                     for red from 0 by 0.1
-                    do (progn
-                         (sdl2:set-render-draw-color *renderer*
-                                                     (truncate red)
-                                                     background-color
-                                                     background-color
-                                                     255)
-                         (sdl2:render-draw-line *renderer* 0 i width i)))
+                    do (sdl2:set-render-draw-color *renderer*
+                                                   (truncate red)
+                                                   background-color
+                                                   background-color
+                                                   255)
+                      (sdl2:render-draw-line *renderer* 0 i width i))
 
                  (when (> background-color 0)
-                   (incf background-color -1))
+                   (decf background-color))
 
-                 (when (= 0 (mod (total-frames fc) speedup-frames))
+                 (when (zerop (mod (total-frames fc) speedup-frames))
                    (setf drop-frames (truncate drop-frames 1.1)))
 
-                 (when (= 0 (mod (total-frames fc) drop-frames))
+                 (when (zerop (mod (total-frames fc) drop-frames))
                    (move-down bs ta)
                    (when (block-collides bs ta)
                      (setf background-color 100)
-                     (incf (y-pos bs) -1)
+                     (decf (y-pos bs))
                      (commit-block bs ta)
                      (push bs bss)
                      (setf bs (random-block))
                      (when (block-collides bs ta)
                        (sdl2:push-event :quit))))
-
-
 
                  (draw-block-seq bs)
                  (loop for block in bss
@@ -337,19 +303,19 @@
                    (setf blocks-to-move-down nil))
 
                  (let ((complete (complete-rows ta)))
-                   (when complete
+                   (unless (null complete)
                      (let ((start-row (car complete)))
                        (loop for row from start-row downto 0
                           do
                             (loop for col from 0 below (car (array-dimensions ta))
                                do (setf (aref ta col row)
-                                        (if (> row 0)
+                                        (if (plusp row)
                                             (aref ta col (1- row))
                                             nil))))
                        (setf blocks-to-move-down
                              (eliminate-rows bss start-row)))
 
-                     (setf bss (remove-if (lambda (bs) (not (rows bs))) bss))))
+                     (setf bss (remove-if (lambda (bs) (null (rows bs))) bss))))
 
                  (sdl2:render-present *renderer*)
                  (sdl2:delay (calculate-delay fc))
@@ -376,6 +342,6 @@
                                (not (block-collides bs ta)))
                       (move-down bs ta)
                       (when (block-collides bs ta)
-                        (incf (y-pos bs) -1))))
+                        (decf (y-pos bs)))))
           (:quit ()
                  t))))))
