@@ -21,16 +21,12 @@
   `(sdl2:with-init (sdl2-ffi:+sdl-init-video+ sdl2-ffi:+sdl-init-events+)
      (sdl2:with-window (*window* :w ,width :h ,height :flags '(:shown))
        (sdl2:with-renderer (*renderer* *window* :flags '(:accelerated))
-;         (sdl2-image:init '(:PNG :JPG))
-;         (sdl2-ttf:init)
          (unwind-protect
               (let ((*screen-width* width)
                     (*screen-height* height))
                 (sdl2:set-render-draw-color *renderer* 0 0 0 #xFF)
                 (sdl2:set-render-draw-blend-mode *renderer* sdl2-ffi:+sdl-blendmode-blend+)
                 ,@body))))))
-;           (sdl2-image:quit)
-;           (sdl2-ttf:quit))))))
 
 (defclass framerate-manager ()
   ((total-frames :initform 0 :accessor total-frames)
