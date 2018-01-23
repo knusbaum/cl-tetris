@@ -219,7 +219,8 @@
 
     (when (block-collides bs ta)
       (setf (rows bs) old-rows)
-      (incf (x-pos bs) (- (truncate (- new-width orig-width) 2))))))
+      (incf (x-pos bs) (- (truncate (- new-width orig-width) 2)))
+      (incf (y-pos bs) (- (- orig-width new-width))))))
 
 (defun block-collides (bs tetris-array)
   (if (or
@@ -367,6 +368,9 @@
 
                     (when (eq (sdl2:scancode keysym) :scancode-left)
                       (move-left bs ta))
+
+                    (when (eq (sdl2:scancode keysym) :scancode-up)
+                      (rotate-block bs ta))
 
                     (when (eq (sdl2:scancode keysym) :scancode-space)
                       (rotate-block bs ta))

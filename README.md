@@ -16,6 +16,7 @@ The only dependencies are cl-sdl2 (this in turn requires libsdl2 to be installed
  * left-arrow: move left
  * right-arrow: move right
  * down-arrow: move down
+ * up-arrow: rotate
  * space: rotate
  * Q key: quit
  
