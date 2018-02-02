@@ -1,12 +1,18 @@
 (in-package :cl-tetris)
 
-;;; The main tetris function
-(defun tetris ()
+(defun score-for (n)
+  (case n
+    (1 100)
+    (2 200)
+    (3 300)
+    (4 400)))
+
+(defun tetris-game ()
   (let ((width 400)
         (height 800))
     (with-full-sdl-init (width height)
       (let ((fr-mgr (make-instance 'framerate-manager
-                               :frame-duration-ms 10))
+                                   :frame-duration-ms 10))
             (bs (random-block))
             (bss nil)
             (ta (make-tetris-array))
@@ -14,7 +20,8 @@
             (background-color 0)
             (blocks-to-move-down nil)
             (speedup-frames 3000)
-            (keyboard (make-instance 'keyboard)))
+            (keyboard (make-instance 'keyboard))
+            (score 0))
         (sdl2:with-event-loop (:method :poll :background nil)
           (:idle ()
                  (begin-frame fr-mgr)
@@ -87,6 +94,7 @@
 
                  (let ((complete (complete-rows ta)))
                    (unless (null complete)
+                     (incf score (score-for (length complete)))
                      (let ((start-row (car complete)))
                        (loop for row from start-row downto 0
                           do
@@ -101,8 +109,8 @@
                      (setf bss (remove-if (lambda (bs) (null (rows bs))) bss))))
 
 
-                 (sdl2:with-rects ((text-dest 0 0 0 0))
-                   (draw-string text-dest "HELLO, WORLD!"))
+                 (sdl2:with-rects ((text-dest 5 5 0 0))
+                   (draw-string text-dest (format nil "Score: ~a" score)))
 
                  (sdl2:render-present *renderer*)
                  (sdl2:delay (calculate-delay fr-mgr))
@@ -114,4 +122,38 @@
           (:keyup (:keysym keysym)
                   (keyup-keysym keyboard keysym))
           (:quit ()
+                 t))
+        score))))
+
+(defun display-score (score)
+  (let ((width 600)
+        (height 100))
+    (with-full-sdl-init (width height :font-size 50)
+      (let ((fr-mgr (make-instance 'framerate-manager
+                                   :frame-duration-ms 10)))
+        (sdl2:with-event-loop (:method :poll :background nil)
+          (:idle ()
+                 (begin-frame fr-mgr)
+
+                 (sdl2:set-render-draw-color *renderer* 0 0 0 255)
+                 (sdl2:render-clear *renderer*)
+
+                 (sdl2:with-rects ((text-dest 5 5 0 0))
+                   (draw-string text-dest (format nil "FINAL SCORE: ~a" score)))
+
+                 (sdl2:render-present *renderer*)
+
+                 (sdl2:delay (calculate-delay fr-mgr))
+                 (end-frame fr-mgr)
+                 (calculate-fps fr-mgr))
+          (:keydown (:keysym keysym)
+                    (when (equal (sdl2:scancode keysym) :scancode-q)
+                      (sdl2:push-event :quit)))
+          (:quit ()
                  t))))))
+
+;;; The main tetris function
+(defun tetris ()
+  (let ((score (tetris-game)))
+    (display-score score)))
+        

@@ -11,12 +11,12 @@
 
 ;;; This initializes everything that needs to be initialized
 ;;; for the game to work
-(defmacro with-full-sdl-init ((width height) &rest body)
+(defmacro with-full-sdl-init ((width height &key (font-size 18)) &rest body)
   `(sdl2:with-init (sdl2-ffi:+sdl-init-video+ sdl2-ffi:+sdl-init-events+)
      (sdl2:with-window (*window* :w ,width :h ,height :flags '(:shown))
        (sdl2:with-renderer (*renderer* *window* :flags '(:accelerated))
          (sdl2-ttf:init)
-         (init-text-drawing "/home/kyle/Downloads/Plumpfull.ttf" 18)
+         (init-text-drawing ,(merge-pathnames "FreeMono.ttf" *compile-file-truename*) ,font-size)
          (unwind-protect
               (let ((*screen-width* width)
                     (*screen-height* height))
