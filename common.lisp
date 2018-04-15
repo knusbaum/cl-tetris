@@ -11,9 +11,9 @@
 
 ;;; This initializes everything that needs to be initialized
 ;;; for the game to work
-(defmacro with-full-sdl-init ((width height &key (font-size 18)) &rest body)
+(defmacro with-full-sdl-init ((width height &key (font-size 18) (title "CL-Tetris")) &rest body)
   `(sdl2:with-init (sdl2-ffi:+sdl-init-video+ sdl2-ffi:+sdl-init-events+)
-     (sdl2:with-window (*window* :w ,width :h ,height :flags '(:shown))
+     (sdl2:with-window (*window* :w ,width :h ,height :flags '(:shown) :title ,title)
        (sdl2:with-renderer (*renderer* *window* :flags '(:accelerated))
          (sdl2-ttf:init)
          (init-text-drawing ,(merge-pathnames "FreeMono.ttf" *compile-file-truename*) ,font-size)
@@ -45,7 +45,7 @@
 (defun calculate-fps (fc)
   (when (= (frame fc) (frames-per-calc fc))
     (let ((ticks-per-frame (/ (curr-ticks fc) (frame fc))))
-      (setf (fps fc) (/ 1000 ticks-per-frame))
+      (setf (fps fc) (float (/ 1000 ticks-per-frame)))
       (setf (frame fc) 0)
       (setf (curr-ticks fc) 0)))
       ;(format t "FPS: ~a, Avg frame length (ms): ~a~%"
@@ -58,12 +58,12 @@
          (ret (- (frame-duration-ms fc) (- ticks (start-ticks fc)))))
     (max 0 ret)))
 
-(defun draw-grid ()
+(defun draw-grid (start-x)
   (sdl2:set-render-draw-color *renderer* 0 0 0 25)
   (loop for i from 0 below *screen-width* by *block-size-px*
-     do (sdl2:render-draw-line *renderer* i 0 i *screen-height*))
+        do (sdl2:render-draw-line *renderer* (+ start-x i) 0 (+ start-x i) *screen-height*))
   (loop for i from 0 below *screen-height* by *block-size-px*
-     do (sdl2:render-draw-line *renderer* 0 i *screen-width* i)))
+        do (sdl2:render-draw-line *renderer* start-x i (+ start-x *screen-width*) i)))
 
 (defun make-tetris-array ()
   (make-array (list (truncate *screen-width* *block-size-px*)
@@ -72,16 +72,16 @@
 
 (defun complete-row (ta i)
   (loop for j from 0 below (car (array-dimensions ta))
-     unless (aref ta j i)
-     do (return-from complete-row nil))
+        unless (aref ta j i)
+        do (return-from complete-row nil))
   t)
 
 (defun complete-rows (ta)
   (let ((colcount (car (array-dimensions ta)))
         (rowcount (cadr (array-dimensions ta))))
     (loop for i from (1- rowcount) downto 0
-       when (complete-row ta i)
-       collect i)))
+          when (complete-row ta i)
+          collect i)))
 
 (defclass color ()
   ((red :initarg :red :accessor red)
@@ -142,25 +142,28 @@
                              (nil t t))
                      :red 255 :green 0 :blue 0)))))
 
-(defun draw-block-seq (bs)
+(defun draw-block-seq (bs start-x start-y)
+  (draw-block-seq-at bs
+                     (+ start-x (* *block-size-px* (x-pos bs)))
+                     (+ start-y (* *block-size-px* (y-pos bs)))))
+
+(defun draw-block-seq-at (bs x y)
   (sdl2:set-render-draw-color *renderer*
                               (red (color bs)) (green (color bs)) (blue (color bs)) 255)
-  (loop
-     for row in (rows bs)
-     for row-i from 0
-     do (loop
-           for col in row
-           for col-i from 0
-           when col
-           do (sdl2:with-rects ((dest (+ (* *block-size-px* (x-pos bs))
-                                         (* *block-size-px* col-i))
-                                      (+ (* *block-size-px* (y-pos bs))
-                                         (* *block-size-px* row-i))
-                                      *block-size-px*
-                                      *block-size-px*))
-                (sdl2:render-fill-rect *renderer* dest)))))
+  (loop for row in (rows bs)
+        for row-i from 0
+        do (loop for col in row
+                 for col-i from 0
+                 when col
+                 do (sdl2:with-rects ((dest (+ (* *block-size-px* col-i)
+                                               x)
+                                            (+ (* *block-size-px* row-i)
+                                               y)
+                                            *block-size-px*
+                                            *block-size-px*))
+                                     (sdl2:render-fill-rect *renderer* dest)))))
 
-(defun move-down (bs ta)
+(defun move-down (bs)
   (incf (y-pos bs)))
 
 (defun move-left (bs ta)
@@ -178,10 +181,9 @@
         (new-width (length (car (rows bs))))
         (old-rows (rows bs)))
     (setf (rows bs)
-          (loop
-             for i from 0 below (length (car (rows bs)))
-             collect (loop for j from (1- (length (rows bs))) downto 0
-                        collect (elt (elt (rows bs) j) i))))
+          (loop for i from 0 below (length (car (rows bs)))
+                collect (loop for j from (1- (length (rows bs))) downto 0
+                              collect (elt (elt (rows bs) j) i))))
 
     (unless (= orig-width new-width)
       (incf (x-pos bs) (truncate (- new-width orig-width) 2)))
@@ -202,17 +204,15 @@
        (< (x-pos bs) 0))
 
       (return-from block-collides t)
-      (loop
-         for row in (rows bs)
-         for row-i from 0
-         for y-position = (+ row-i (y-pos bs))
-         when (>= y-position 0)
-         do (loop
-               for col in row
-               for col-i from 0
-               when col
-               do (when (aref tetris-array (+ col-i (x-pos bs)) y-position)
-                    (return-from block-collides t))))))
+      (loop for row in (rows bs)
+            for row-i from 0
+            for y-position = (+ row-i (y-pos bs))
+            when (>= y-position 0)
+            do (loop for col in row
+                     for col-i from 0
+                     when col
+                     do (when (aref tetris-array (+ col-i (x-pos bs)) y-position)
+                          (return-from block-collides t))))))
 
 (defun eliminate-row (bs row)
   (when (and
@@ -223,22 +223,20 @@
           (pop (rows bs))
           (setf (rows bs)
                 (loop for elem in (rows bs)
-                   for i from 0
-                   unless (= i row-to-delete)
-                   collect elem)))))
+                      for i from 0
+                      unless (= i row-to-delete)
+                      collect elem)))))
   (>= row (y-pos bs)))
 
 (defun eliminate-rows (bss row)
   (loop for bs in bss
-     when (eliminate-row bs row)
-     collect bs))
+        when (eliminate-row bs row)
+        collect bs))
 
 (defun commit-block (bs tetris-array)
-  (loop
-     for row in (rows bs)
-     for row-i from 0
-     do (loop
-           for col in row
-           for col-i from 0
-           when col
-           do (setf (aref tetris-array (+ (x-pos bs) col-i) (+ (y-pos bs) row-i)) t))))
+  (loop for row in (rows bs)
+        for row-i from 0
+        do (loop for col in row
+                 for col-i from 0
+                 when col
+                 do (setf (aref tetris-array (+ (x-pos bs) col-i) (+ (y-pos bs) row-i)) t))))
