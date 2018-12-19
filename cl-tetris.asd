@@ -5,7 +5,7 @@
   :description "The game of Tetris"
   :license "MIT"
   :author "Kyle Nusbaum"
-  :depends-on (#:sdl2 #:sdl2-ttf)
+  :depends-on (#:trivial-garbage #:sdl2 #:sdl2-ttf)
   :components ((:file "cl-tetris-package")
                (:file "common"
                       :depends-on ("cl-tetris-package"))
